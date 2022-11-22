@@ -32,7 +32,6 @@ func _on_option_index_pressed(idx : int) -> void:
 	for op in ops_container.get_children():
 		if op.has_method("show_if_named"):
 			op.show_if_named(item_name)
-			break
 
 func _on_operation_requested(req : Dictionary) -> void:
 	emit_signal("operation_requested", req)

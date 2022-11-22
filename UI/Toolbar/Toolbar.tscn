@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=4 format=2]
 
 [ext_resource path="res://UI/Toolbar/Toolbar.gd" type="Script" id=1]
 [ext_resource path="res://UI/Toolbar/Region/Region.tscn" type="PackedScene" id=2]
+[ext_resource path="res://UI/Toolbar/Line/Line.tscn" type="PackedScene" id=3]
 
 [node name="Toolbar" type="MarginContainer"]
 anchor_right = 1.0
@@ -71,6 +72,11 @@ margin_right = 1008.0
 margin_bottom = 68.0
 
 [node name="Region" parent="MC/Rows/Ops" instance=ExtResource( 2 )]
+anchor_right = 0.0
+margin_right = 1008.0
+margin_bottom = 16.0
+
+[node name="Line" parent="MC/Rows/Ops" instance=ExtResource( 3 )]
 anchor_right = 0.0
 margin_right = 1008.0
 margin_bottom = 16.0

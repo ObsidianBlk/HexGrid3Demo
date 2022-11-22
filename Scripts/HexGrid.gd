@@ -543,6 +543,10 @@ func remove_highlight_region(region_name : String) -> void:
 		_QueueRedraw()
 		emit_signal("region_removed", region_name)
 
+func replace_highlight_region(region_name : String, cells : Array, color : Color = Color.bisque, priority : int = 0) -> int:
+	remove_highlight_region(region_name)
+	return add_highlight_region(region_name, cells, color, priority)
+
 func has_highlight_region(region_name : String) -> bool:
 	return region_name in _highlight_regions
 
