@@ -2,7 +2,28 @@ tool
 extends Node2D
 class_name HexGrid
 
-
+# ------------------------------------------------------------------------------
+# Internal Class
+# ------------------------------------------------------------------------------
+class Edge:
+	var to : Vector2 = Vector2.ZERO
+	var from : Vector2 = Vector2.ZERO
+	var owners : Dictionary = {}
+	
+	func _init(a : Vector2, b : Vector2) -> void:
+		if a.x > b.x or a.y > b.y:
+			from = a
+			to = b
+		else:
+			from = b
+			to = a
+	
+	func draw(surf : CanvasItem, offset : Vector2, color : Color, width : float = 1.0) -> void:
+		surf.draw_line(from + offset, to + offset, color, width)
+	
+	func add_owner(cell : HexCell) -> void:
+		if not cell.qrs in owners:
+			owners[cell.qrs] = cell
 
 # ------------------------------------------------------------------------------
 # Signals
@@ -44,7 +65,11 @@ var _target_camera_path : NodePath = ""
 var _viz_dirty : bool = true
 var _grid_origin : HexCell = HexCell.new()
 var _highlight_regions : Dictionary = {}
-var _grid_data : Array = []
+var _active_cells : Dictionary = {}
+var _grid_data : Dictionary = {
+	"cells": {},
+	"edges": []
+}
 
 var _target_camera : WeakRef = weakref(null)
 
@@ -71,7 +96,7 @@ func set_grid_color_edge_alpha(a : float) -> void:
 func set_enable_base_grid(e : bool) -> void:
 	if _enable_base_grid != e:
 		_enable_base_grid = e
-		_BuildGridData()
+		_QueueRedraw()
 
 func set_base_grid_range(r : int) -> void:
 	if r > 0:
@@ -89,7 +114,7 @@ func set_enable_cursor(enable : bool) -> void:
 			_AddCursorHighlightRegion()
 		else:
 			remove_highlight_region("cursor")
-		_BuildGridData()
+		_QueueRedraw()
 
 func set_cursor_color(c : Color) -> void:
 	_cursor_color = c
@@ -303,13 +328,15 @@ func _get_property_list() -> Array:
 
 
 func _draw() -> void:
-	for item in _grid_data:
+	var offset = _grid_origin.to_point() * _cell_size
+	for e in _grid_data.edges:
 		var color : Color = _base_grid_color
-		if item[1] != "":
-			color = _highlight_regions[item[1]][HR_COLOR]
-		if _grid_color_edge_alpha < 1.0:
-			color.a = lerp(1.0, _grid_color_edge_alpha, item[2] / _base_grid_range)
-		draw_polyline(item[0], color, 1.0, true)
+		var region_name : String = _GetEdgeDominantRegion(e)
+		if region_name != "":
+			color = _highlight_regions[region_name][HR_COLOR]
+			e.draw(self, offset, color)
+		elif _enable_base_grid:
+			e.draw(self, offset, color)
 	
 	if _enable_focus_dot:
 		var target = _target_camera.get_ref()
@@ -352,63 +379,107 @@ func _AddCursorHighlightRegion() -> void:
 
 func _UpdateCellOrientation(o : int) -> void:
 	_grid_origin.orientation = o
-	for key in _highlight_regions:
-		for cell in _highlight_regions[key][HR_CELLS]:
-			cell.orientation = o
 	_BuildGridData()
 
-func _RegionHasCell(key : String, cell : HexCell) -> bool:
-	for rcell in _highlight_regions[key][HR_CELLS]:
-		if rcell.eq(cell):
-			return true
-	return false
+func _ActivateCellRegion(cell : HexCell, region_name : String, priority : int) -> void:
+	if not region_name in _highlight_regions:
+		return
+	if not cell.qrs in _active_cells:
+		_active_cells[cell.qrs] = {}
+	if not priority in _active_cells[cell.qrs]:
+		_active_cells[cell.qrs][priority] = []
+	_active_cells[cell.qrs][priority].append(region_name)
 
-func _GetCellHighlightRegion(cell : HexCell) -> String:
-	var highest_key : String = ""
+func _DeactivateCellRegion(cell : HexCell, region_name : String, priority : int) -> void:
+	if not region_name in _highlight_regions:
+		return
+	if not cell.qrs in _active_cells:
+		return
+	if priority in _active_cells[cell.qrs]:
+		var idx : int = _active_cells[cell.qrs][priority].find(region_name)
+		if idx >= 0:
+			_active_cells[cell.qrs][priority].remove(idx)
+			if _active_cells[cell.qrs][priority].size() <= 0:
+				_active_cells[cell.qrs].erase(priority)
+				if _active_cells[cell.qrs].size() <= 0:
+					_active_cells.erase(cell.qrs)
+
+func _GetEdgeDominantRegion(e : Edge) -> String:
+	var owners : Array = e.owners.values()
+	var highest_qrs : Vector3 = Vector3.ZERO
 	var highest_priority : int = -1
-	for key in _highlight_regions.keys():
-		if _highlight_regions[key][HR_PRIORITY] > highest_priority:
-			if _RegionHasCell(key, cell):
-				highest_key = key
-				highest_priority = _highlight_regions[key][HR_PRIORITY]
-	return highest_key
+	for cell in owners:
+		#var ocell : HexCell = HexCell.new(cell.qrs + _grid_origin.qrs, false, cell_orientation)
+		var qrs : Vector3 = cell.qrs + _grid_origin.qrs
+		var priority = _GetCellPriority(qrs)
+		if priority > highest_priority:
+			highest_priority = priority
+			highest_qrs = qrs
+	if highest_priority >= 0:
+		return _active_cells[highest_qrs][highest_priority][0]
+	return ""
 
-func _RegionPrioritySort(a : String, b : String) -> bool:
-	return _highlight_regions[a][HR_PRIORITY] < _highlight_regions[b][HR_PRIORITY]
+
+func _GetCellPriority(qrs : Vector3) -> int:
+	if qrs in _active_cells:
+		var priorities : Array = _active_cells[qrs].keys()
+		priorities.sort()
+		return priorities[priorities.size() - 1]
+	return -1
+
+
+func _GetCellActiveRegion(cell : HexCell) -> String:
+	var priority = _GetCellPriority(cell.qrs)
+	if priority >= 0:
+		return _active_cells[cell.qrs][priority][0]
+	return ""
+
+func _AddCellToGrid(cell : HexCell) -> void:
+	if not cell.qrs in _grid_data.cells:
+		_grid_data.cells[cell.qrs] = [null, null, null, null, null, null]
 
 func _BuildGridData() -> void:
-	_grid_data.clear()
-	var region_cells : Dictionary = {}
-	for cell in _grid_origin.get_region(_base_grid_range):
-		var hr : String = _GetCellHighlightRegion(cell)
-		if hr != "":
-			if not hr in region_cells:
-				region_cells[hr] = []
-			region_cells[hr].append(cell)
-		elif _enable_base_grid:
-			_grid_data.append([_HexToPoolArray(cell, _cell_size), "", _grid_origin.distance_to(cell)])
-	
-	if not region_cells.empty():
-		var keys : Array = region_cells.keys()
-		keys.sort_custom(self, "_RegionPrioritySort")
-		for key in keys:
-			for cell in region_cells[key]:
-				_grid_data.append([_HexToPoolArray(cell, _cell_size), key, _grid_origin.distance_to(cell)])
-
+	_grid_data.edges.clear()
+	var origin : HexCell = HexCell.new(null, false, _cell_orientation)
+	var region : Array = origin.get_region(_base_grid_range)
+	for cell in region:
+		_HexToGridData(cell)
+	_grid_data.cells.clear()
 	_QueueRedraw()
 
+func _StoreEdge(cell : HexCell, eid : int, from : Vector2, to : Vector2) -> void:
+	var e : Edge = Edge.new(from, to)
+	var eidx : int = -1
+	if _grid_data.cells[cell.qrs][eid] == null:
+		eidx = _grid_data.edges.size()
+		_grid_data.cells[cell.qrs][eid] = eidx
+		_grid_data.edges.append(e)
+		e.add_owner(cell)
+	else:
+		eidx = _grid_data.cells[cell.qrs][eid]
+	
+	var ncell : HexCell = cell.get_neighbor(eid)
+	_AddCellToGrid(ncell)
+	var neid : int = (eid + 3) % 6
+	if _grid_data.cells[ncell.qrs][neid] == null:
+		_grid_data.cells[ncell.qrs][neid] = eidx
+		_grid_data.edges[eidx].add_owner(ncell)
 
-func _HexToPoolArray(cell : HexCell, size : float) -> PoolVector2Array:
+func _HexToGridData(cell : HexCell) -> void:
+	_AddCellToGrid(cell)
 	var pos : Vector2 = cell.to_point()
-	var points : Array = []
-	var point : Vector2 = Vector2(0, -size) if cell.orientation == HexCell.ORIENTATION.Pointy else Vector2(-size, 0)
-	var offset : Vector2 = pos * size
-	points.append(point + offset)
+	var offset : Vector2 = pos * _cell_size
+	var eid : int = 4 if cell.orientation == HexCell.ORIENTATION.Pointy else 2 # It is known... lol
+	var point : Vector2 = Vector2(0, -_cell_size) if cell.orientation == HexCell.ORIENTATION.Pointy else Vector2(-_cell_size, 0)
+	var last_point : Vector2 = point + offset
 	for i in range(1, 6):
 		var rad = RAD_60 * i
-		points.append(point.rotated(rad) + offset)
-	points.append(point + offset)
-	return PoolVector2Array(points)
+		var npoint : Vector2 = point.rotated(rad) + offset
+		_StoreEdge(cell, eid, last_point, npoint)
+		eid = (eid + 1) % 6
+		last_point = npoint
+	_StoreEdge(cell, eid, last_point, point + offset)
+
 
 func _SetOriginFromPoint(p : Vector2, set_as_cursor : bool = false) -> void:
 	var new_origin : HexCell = HexCell.new(p / _cell_size, true, _cell_orientation)
@@ -416,10 +487,8 @@ func _SetOriginFromPoint(p : Vector2, set_as_cursor : bool = false) -> void:
 		_grid_origin = new_origin
 		if set_as_cursor:
 			change_highlight_region_cells("cursor", [new_origin])
-		_BuildGridData()
 		emit_signal("origin_changed", _grid_origin.clone())
-	else:
-		_QueueRedraw()
+	_QueueRedraw()
 
 # ------------------------------------------------------------------------------
 # Public Methods
@@ -430,7 +499,7 @@ func set_origin_cell(origin : HexCell) -> void:
 	
 	if origin.is_valid() and not origin.eq(_grid_origin):
 		_grid_origin = origin
-		_BuildGridData()
+		_QueueRedraw()
 		emit_signal("origin_changed", _grid_origin.clone())
 
 func set_origin_from_point(p : Vector2) -> void:
@@ -449,24 +518,33 @@ func add_highlight_region(region_name : String, cells : Array, color : Color = C
 			for cell in cells:
 				cell.orientation = _cell_orientation
 	_highlight_regions[region_name] = {HR_CELLS: cells, HR_COLOR: color, HR_PRIORITY: priority}
-	_BuildGridData()
+	for cell in cells:
+		_ActivateCellRegion(cell, region_name, priority)
+	_QueueRedraw()
 	emit_signal("region_added", region_name)
 	return OK
 
 func remove_highlight_region(region_name : String) -> void:
 	if region_name in _highlight_regions:
+		var priority : int = _highlight_regions[region_name][HR_PRIORITY]
+		for cell in _highlight_regions[region_name][HR_CELLS]:
+			_DeactivateCellRegion(cell, region_name, priority)
 		_highlight_regions.erase(region_name)
-		_BuildGridData()
+		_QueueRedraw()
 		emit_signal("region_removed", region_name)
+
+func has_highlight_region(region_name : String) -> bool:
+	return region_name in _highlight_regions
 
 func change_highlight_region_cells(region_name : String, cells : Array) -> void:
 	if region_name in _highlight_regions:
+		var priority : int = _highlight_regions[region_name][HR_PRIORITY]
+		for cell in _highlight_regions[region_name][HR_CELLS]:
+			_DeactivateCellRegion(cell, region_name, priority)
 		_highlight_regions[region_name][HR_CELLS] = cells
-		if _highlight_regions[region_name][HR_CELLS].size() > 0:
-			if _highlight_regions[region_name][HR_CELLS][0].orientation != _cell_orientation:
-				for cell in _highlight_regions[region_name][HR_CELLS]:
-					cell.orientation = _cell_orientation
-		_BuildGridData()
+		for cell in _highlight_regions[region_name][HR_CELLS]:
+			_ActivateCellRegion(cell, region_name, priority)
+		_QueueRedraw()
 		emit_signal("region_changed", region_name)
 
 func change_highlight_region_color(region_name : String, color : Color) -> void:
@@ -478,8 +556,12 @@ func change_highlight_region_color(region_name : String, color : Color) -> void:
 func change_highlight_region_priority(region_name : String, priority : int) -> void:
 	if region_name in _highlight_regions:
 		if _highlight_regions[region_name][HR_PRIORITY] != priority:
+			var old_priority : int = _highlight_regions[region_name][HR_PRIORITY]
+			for cell in _highlight_regions[region_name][HR_CELLS]:
+				_DeactivateCellRegion(cell, region_name, old_priority)
+				_ActivateCellRegion(cell, region_name, priority)
 			_highlight_regions[region_name][HR_PRIORITY] = priority
-			_BuildGridData()
+			_QueueRedraw()
 			emit_signal("region_changed", region_name)
 
 

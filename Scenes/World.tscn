@@ -9,10 +9,10 @@ script = ExtResource( 2 )
 [node name="HexGrid" type="Node2D" parent="."]
 script = ExtResource( 1 )
 cell_orientation = 1
-cell_size = 20
+cell_size = 10
 grid_color_edge_alpha = 0.1
 enable_base_grid = true
-base_grid_range = 8
+base_grid_range = 20
 base_grid_color = Color( 0.498039, 1, 0.831373, 1 )
 enable_cursor = true
 cursor_color = Color( 1, 1, 0, 1 )
