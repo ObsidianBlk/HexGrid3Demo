@@ -52,7 +52,7 @@ const RAD_60 : float = deg2rad(60.0)
 # ------------------------------------------------------------------------------
 var _cell_orientation : int = HexCell.ORIENTATION.Pointy
 var _cell_size : int = 1
-var _grid_color_edge_alpha : float = 0.1
+var _grid_alpha_curve : Curve = null
 var _enable_base_grid : bool = false
 var _base_grid_range : int = 20
 var _base_grid_color : Color = Color.aquamarine
@@ -93,10 +93,14 @@ func set_cell_size(s : int) -> void:
 		_cell_size = s
 		_BuildGridData()
 
-func set_grid_color_edge_alpha(a : float) -> void:
-	if a >= 0.0 and a <= 1.0:
-		_grid_color_edge_alpha = a
-		_QueueRedraw()
+func set_grid_alpha_curve(c : Curve) -> void:
+	_grid_alpha_curve = c
+	_QueueRedraw()
+
+#func set_grid_color_edge_alpha(a : float) -> void:
+#	if a >= 0.0 and a <= 1.0:
+#		_grid_color_edge_alpha = a
+#		_QueueRedraw()
 
 func set_enable_base_grid(e : bool) -> void:
 	if _enable_base_grid != e:
@@ -158,8 +162,10 @@ func _get(property : String):
 			return _cell_orientation
 		"cell_size":
 			return _cell_size
-		"grid_color_edge_alpha":
-			return _grid_color_edge_alpha
+		"grid_alpha_curve":
+			return _grid_alpha_curve
+#		"grid_color_edge_alpha":
+#			return _grid_color_edge_alpha
 		"enable_base_grid":
 			return _enable_base_grid
 		"base_grid_range":
@@ -193,10 +199,14 @@ func _set(property : String, value) -> bool:
 			if typeof(value) == TYPE_INT and value > 0:
 				set_cell_size(value)
 			else : success = false
-		"grid_color_edge_alpha":
-			if typeof(value) == TYPE_REAL and value >= 0.0 and value <= 1.0:
-				set_grid_color_edge_alpha(value)
+		"grid_alpha_curve":
+			if value == null or value is Curve:
+				set_grid_alpha_curve(value)
 			else : success = false
+#		"grid_color_edge_alpha":
+#			if typeof(value) == TYPE_REAL and value >= 0.0 and value <= 1.0:
+#				set_grid_color_edge_alpha(value)
+#			else : success = false
 		"enable_base_grid":
 			if typeof(value) == TYPE_BOOL:
 				set_enable_base_grid(value)
@@ -260,12 +270,24 @@ func _get_property_list() -> Array:
 			usage = PROPERTY_USAGE_DEFAULT
 		},
 		{
-			name = "grid_color_edge_alpha",
-			type = TYPE_REAL,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0,1.0",
+			name = "grid_alpha_curve",
+			type = TYPE_OBJECT,
+			hint = PROPERTY_HINT_RESOURCE_TYPE,
+			hint_string = "Curve",
 			usage = PROPERTY_USAGE_DEFAULT
 		},
+		{
+			name = "base_grid_range",
+			type = TYPE_INT,
+			usage = PROPERTY_USAGE_DEFAULT
+		},
+#		{
+#			name = "grid_color_edge_alpha",
+#			type = TYPE_REAL,
+#			hint = PROPERTY_HINT_RANGE,
+#			hint_string = "0.0,1.0",
+#			usage = PROPERTY_USAGE_DEFAULT
+#		},
 		{
 			name = "enable_base_grid",
 			type = TYPE_BOOL,
@@ -275,11 +297,6 @@ func _get_property_list() -> Array:
 	
 	if _enable_base_grid:
 		arr.append_array([
-			{
-				name = "base_grid_range",
-				type = TYPE_INT,
-				usage = PROPERTY_USAGE_DEFAULT
-			},
 			{
 				name = "base_grid_color",
 				type = TYPE_COLOR,
@@ -336,8 +353,9 @@ func _draw() -> void:
 	var offset = _grid_origin.to_point() * _cell_size
 	for e in _grid_data.edges:
 		var alpha : float = 1.0
-		if _grid_color_edge_alpha < 1.0:
-			alpha = max(0.0, 1.0 - ((e.dist_to_center() / _cell_size) / (_base_grid_range * 1.7)))
+		if _grid_alpha_curve != null:
+			alpha = max(0.0, min(1.0, ((e.dist_to_center() / _cell_size) / (_base_grid_range * 1.7))))
+			alpha = _grid_alpha_curve.interpolate(alpha)
 		if alpha > 0.0:
 			var color : Color = _base_grid_color
 			var region_name : String = _GetEdgeDominantRegion(e)

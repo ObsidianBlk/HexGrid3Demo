@@ -1,8 +1,11 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
 [ext_resource path="res://Scripts/HexGrid.gd" type="Script" id=1]
 [ext_resource path="res://Scenes/World.gd" type="Script" id=2]
 [ext_resource path="res://UI/Toolbar/Toolbar.tscn" type="PackedScene" id=3]
+
+[sub_resource type="Curve" id=1]
+_data = [ Vector2( 0, 1 ), 0.0, 0.0, 0, 0, Vector2( 0.380952, 1 ), 0.0, 0.0, 0, 0, Vector2( 1, 0 ), 0.0, 0.0, 0, 0 ]
 
 [node name="World" type="Node2D"]
 script = ExtResource( 2 )
@@ -11,9 +14,9 @@ script = ExtResource( 2 )
 script = ExtResource( 1 )
 cell_orientation = 0
 cell_size = 20
-grid_color_edge_alpha = 0.1
+grid_alpha_curve = SubResource( 1 )
+base_grid_range = 13
 enable_base_grid = true
-base_grid_range = 20
 base_grid_color = Color( 0.498039, 1, 0.831373, 1 )
 enable_cursor = true
 cursor_color = Color( 1, 1, 0, 1 )
