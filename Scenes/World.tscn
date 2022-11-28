@@ -9,8 +9,8 @@ script = ExtResource( 2 )
 
 [node name="HexGrid" type="Node2D" parent="."]
 script = ExtResource( 1 )
-cell_orientation = 1
-cell_size = 10
+cell_orientation = 0
+cell_size = 20
 grid_color_edge_alpha = 0.1
 enable_base_grid = true
 base_grid_range = 20
@@ -20,7 +20,7 @@ cursor_color = Color( 1, 1, 0, 1 )
 cursor_region_priority = 100
 enable_focus_dot = true
 focus_dot_color = Color( 1, 0, 0, 1 )
-target_camera_path = NodePath("../Camera2D")
+target_camera_path = NodePath("")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 current = true
