@@ -158,6 +158,38 @@ var c : Vector3 = Vector3.ZERO
 var _orientation : int = ORIENTATION.Pointy
 
 # -------------------------------------------------------------------------
+# Setters / Getters
+# -------------------------------------------------------------------------
+func set_qrs(v : Vector3) -> void:
+	v = _RoundHexVector(v)
+	if _IsValid(v):
+		c = v
+
+func get_qrs() -> Vector3:
+	return c
+
+func set_qr(v : Vector2) -> void:
+	set_qrs(Vector3(v.x, (-v.x)-v.y, v.y))
+
+func get_qr() -> Vector2:
+	return Vector2(c.x, c.z)
+
+func set_orientation(o : int) -> void:
+	if ORIENTATION.values().find(o) >= 0:
+		if _orientation != o:
+			_orientation = o
+
+func get_q() -> int:
+	return int(c.x)
+
+func get_r() -> int:
+	return int(c.z)
+
+func get_s() -> int:
+	return int(c.y)
+
+
+# -------------------------------------------------------------------------
 # Override Methods
 # -------------------------------------------------------------------------
 func _init(value = null, point_is_spacial : bool = false, orientation : int = -1) -> void:
@@ -263,6 +295,10 @@ func _get_property_list() -> Array:
 # -------------------------------------------------------------------------
 # Private Methods
 # -------------------------------------------------------------------------
+func _IsValid(v : Vector3) -> bool:
+	return v.x + v.y + v.z == 0.0
+
+
 func _CellLerp(a : HexCell, b : HexCell, t : float) -> HexCell:
 	var q = lerp(a.q, b.q, t)
 	var r = lerp(a.r, b.r, t)
@@ -470,6 +506,7 @@ func get_line_to_cell(cell : HexCell) -> Array:
 		for i in range(0, dist):
 			var ncell = _CellLerp(self, cell, i/dist)
 			res.append(ncell)
+		res.append(cell)
 	return res
 
 func get_line_to_point(point : Vector2) -> Array:

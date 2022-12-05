@@ -29,11 +29,13 @@ var _line_started : bool = false
 onready var camera_node : Camera2D = $Camera2D
 onready var hexgridview : HexGridView = $HexGridView
 onready var toolbar : Control = $UI/Toolbar
+onready var pos_tracker : Control = $UI/PositionTracker
 
 # --------------------------------------------------------------------------------------------------
 # Override Methods
 # --------------------------------------------------------------------------------------------------
 func _ready() -> void:
+	hexgridview.connect("origin_changed", self, "_on_origin_changed")
 	hexgridview.connect("hex_grid_changed", self, "_on_hex_grid_changed")
 	if hexgridview.hex_grid != null:
 		_hex_grid = hexgridview.hex_grid
@@ -165,6 +167,9 @@ func _ClearOp() -> void:
 # --------------------------------------------------------------------------------------------------
 # Override Methods
 # --------------------------------------------------------------------------------------------------
+func _on_origin_changed(origin : HexCell) -> void:
+	pos_tracker.set_position_hex(origin)
+
 func _on_hex_grid_changed() -> void:
 	_hex_grid = hexgridview.hex_grid
 

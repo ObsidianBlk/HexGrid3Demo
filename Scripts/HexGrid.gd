@@ -223,7 +223,7 @@ func _DeactivateCellRegion(cell : HexCell, region_name : String, priority : int)
 	if priority in _active_cells[cell.qrs]:
 		var idx : int = _active_cells[cell.qrs][priority].find(region_name)
 		if idx >= 0:
-			_active_cells[cell.qrs][priority].remove_at(idx)
+			_active_cells[cell.qrs][priority].remove(idx)
 			if _active_cells[cell.qrs][priority].size() <= 0:
 				_active_cells[cell.qrs].erase(priority)
 				if _active_cells[cell.qrs].size() <= 0:

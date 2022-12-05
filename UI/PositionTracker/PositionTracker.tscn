@@ -1,0 +1,68 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://UI/PositionTracker/PositionTracker.gd" type="Script" id=1]
+
+[node name="PositionTracker" type="MarginContainer"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_top = -30.0
+script = ExtResource( 1 )
+
+[node name="ColorRect" type="ColorRect" parent="."]
+margin_right = 1024.0
+margin_bottom = 30.0
+color = Color( 0.180392, 0.180392, 0.180392, 0.768627 )
+
+[node name="MC" type="MarginContainer" parent="."]
+margin_right = 1024.0
+margin_bottom = 30.0
+custom_constants/margin_right = 8
+custom_constants/margin_top = 8
+custom_constants/margin_left = 8
+custom_constants/margin_bottom = 8
+
+[node name="HBC" type="HBoxContainer" parent="MC"]
+margin_left = 8.0
+margin_top = 8.0
+margin_right = 1016.0
+margin_bottom = 22.0
+
+[node name="QRS" type="HBoxContainer" parent="MC/HBC"]
+margin_right = 111.0
+margin_bottom = 14.0
+
+[node name="Label" type="Label" parent="MC/HBC/QRS"]
+margin_right = 75.0
+margin_bottom = 14.0
+custom_colors/font_color = Color( 0.662745, 0.662745, 0.662745, 1 )
+text = "Hex (Q,R,S):"
+
+[node name="Value" type="Label" parent="MC/HBC/QRS"]
+margin_left = 79.0
+margin_right = 111.0
+margin_bottom = 14.0
+text = "0,0,0"
+
+[node name="Spacer" type="Control" parent="MC/HBC"]
+margin_left = 115.0
+margin_right = 914.0
+margin_bottom = 14.0
+size_flags_horizontal = 3
+
+[node name="Pixel" type="HBoxContainer" parent="MC/HBC"]
+margin_left = 918.0
+margin_right = 1008.0
+margin_bottom = 14.0
+
+[node name="Label" type="Label" parent="MC/HBC/Pixel"]
+margin_right = 66.0
+margin_bottom = 14.0
+custom_colors/font_color = Color( 0.662745, 0.662745, 0.662745, 1 )
+text = "Pixel (X,Y):"
+
+[node name="Value" type="Label" parent="MC/HBC/Pixel"]
+margin_left = 70.0
+margin_right = 90.0
+margin_bottom = 14.0
+text = "0,0"

@@ -83,18 +83,28 @@ func set_hex_grid(hg : Resource) -> void:
 	if hg != null and not hg is HexGrid:
 		return
 	if _hex_grid != null:
-		_hex_grid.disconnect("orientation_changed", self, "_on_orientation_changed")
-		_hex_grid.disconnect("bounds_updated", self, "_on_bounds_updated")
-		_hex_grid.disconnect("region_added", self, "_on_region_added")
-		_hex_grid.disconnect("region_removed", self, "_on_region_removed")
-		_hex_grid.disconnect("region_changed", self, "_on_region_changed")
+		if _hex_grid.is_connected("orientation_changed", self, "_on_orientation_changed"):
+			_hex_grid.disconnect("orientation_changed", self, "_on_orientation_changed")
+		if _hex_grid.is_connected("bounds_updated", self, "_on_bounds_updated"):
+			_hex_grid.disconnect("bounds_updated", self, "_on_bounds_updated")
+		if _hex_grid.is_connected("region_added", self, "_on_region_added"):
+			_hex_grid.disconnect("region_added", self, "_on_region_added")
+		if _hex_grid.is_connected("region_removed", self, "_on_region_removed"):
+			_hex_grid.disconnect("region_removed", self, "_on_region_removed")
+		if _hex_grid.is_connected("region_changed", self, "_on_region_changed"):
+			_hex_grid.disconnect("region_changed", self, "_on_region_changed")
 	_hex_grid = hg
 	if _hex_grid != null:
-		_hex_grid.connect("orientation_changed", self, "_on_orientation_changed")
-		_hex_grid.connect("bounds_updated", self, "_on_bounds_updated")
-		_hex_grid.connect("region_added", self, "_on_region_added")
-		_hex_grid.connect("region_removed", self, "_on_region_removed")
-		_hex_grid.connect("region_changed", self, "_on_region_changed")
+		if not _hex_grid.is_connected("orientation_changed", self, "_on_orientation_changed"):
+			_hex_grid.connect("orientation_changed", self, "_on_orientation_changed")
+		if not _hex_grid.is_connected("bounds_updated", self, "_on_bounds_updated"):
+			_hex_grid.connect("bounds_updated", self, "_on_bounds_updated")
+		if not _hex_grid.is_connected("region_added", self, "_on_region_added"):
+			_hex_grid.connect("region_added", self, "_on_region_added")
+		if not _hex_grid.is_connected("region_removed", self, "_on_region_removed"):
+			_hex_grid.connect("region_removed", self, "_on_region_removed")
+		if not _hex_grid.is_connected("region_changed", self, "_on_region_changed"):
+			_hex_grid.connect("region_changed", self, "_on_region_changed")
 		
 		_UpdateCellOrientation()
 		if _enable_cursor:
@@ -349,6 +359,9 @@ func _draw() -> void:
 	
 	var offset = _grid_origin.to_point() * _cell_size
 	for e in _grid_data.edges:
+		if not _IsEdgeVisible(e):
+			continue
+		
 		var alpha : float = 1.0
 		if _grid_alpha_curve != null:
 			alpha = max(0.0, min(1.0, ((e.dist_to_center() / _cell_size) / (_base_grid_range * 1.7))))
@@ -383,7 +396,7 @@ func _process(_delta : float) -> void:
 # ------------------------------------------------------------------------------
 func _QueueRedraw() -> void:
 	if Engine.editor_hint:
-		update()
+		call_deferred("update")
 	else:
 		_viz_dirty = true
 
@@ -528,6 +541,7 @@ func get_origin() -> HexCell:
 # Yes... I realize how repeatative these handlers are. This was whipped quick. May go back and
 # optimize all of this later!
 func _on_orientation_changed(new_orientation : int) -> void:
+	_UpdateCellOrientation()
 	_QueueRedraw()
 
 func _on_region_added(region_name : String) -> void:
