@@ -8,7 +8,7 @@ class_name HexGridView
 class Edge:
 	var to : Vector2 = Vector2.ZERO
 	var from : Vector2 = Vector2.ZERO
-	var owners : Dictionary = {}
+	var owners : Array = []
 	
 	func _init(a : Vector2, b : Vector2) -> void:
 		if a.x > b.x or a.y > b.y:
@@ -23,7 +23,7 @@ class Edge:
 	
 	func add_owner(cell : HexCell) -> void:
 		if not cell.qrs in owners:
-			owners[cell.qrs] = cell
+			owners.append(cell.qrs)
 	
 	func dist_to_center() -> float:
 		var vmid : Vector2 = to - from
@@ -343,19 +343,17 @@ func _UpdateCellOrientation() -> void:
 			_BuildGridData()
 
 func _IsEdgeVisible(e : Edge) -> bool:
-	var owners : Array = e.owners.values()
-	for cell in owners:
-		_scratch_cell.set_qrs(cell.qrs + _grid_origin.qrs)
+	for cell_qrs in e.owners:
+		_scratch_cell.set_qrs(cell_qrs + _grid_origin.qrs)
 		if _hex_grid.cell_in_bounds(_scratch_cell):
 			return true
 	return false
 
 func _GetEdgeDominantRegion(e : Edge) -> String:
-	var owners : Array = e.owners.values()
 	var highest_qrs : Vector3 = Vector3.ZERO
 	var highest_priority : int = -1
-	for cell in owners:
-		var qrs : Vector3 = cell.qrs + _grid_origin.qrs
+	for cell_qrs in e.owners:
+		var qrs : Vector3 = cell_qrs + _grid_origin.qrs
 		var priority = _hex_grid.get_qrs_priority(qrs)
 		if priority > highest_priority:
 			highest_priority = priority
