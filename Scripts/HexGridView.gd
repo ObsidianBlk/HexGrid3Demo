@@ -33,11 +33,8 @@ class Edge:
 # ------------------------------------------------------------------------------
 # Signals
 # ------------------------------------------------------------------------------
-signal hex_grid_changed()
 signal origin_changed(origin)
-signal region_added(region_name)
-signal region_removed(region_name)
-signal region_changed(region_name)
+signal hex_grid_changed()
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -57,9 +54,6 @@ var _base_grid_color : Color = Color.aquamarine
 var _enable_cursor : bool = true
 var _cursor_color : Color = Color.yellow
 var _cursor_region_priority : int = 100
-var _enable_focus_dot : bool = true
-var _focus_dot_color : Color = Color.red
-var _target_camera_path : NodePath = ""
 
 
 # ------------------------------------------------------------------------------
@@ -72,8 +66,6 @@ var _grid_data : Dictionary = {
 	"cells": {},
 	"edges": []
 }
-
-var _target_camera : WeakRef = weakref(null)
 
 
 # ------------------------------------------------------------------------------
@@ -96,15 +88,15 @@ func set_hex_grid(hg : Resource) -> void:
 	_hex_grid = hg
 	if _hex_grid != null:
 		if not _hex_grid.is_connected("orientation_changed", self, "_on_orientation_changed"):
-			_hex_grid.connect("orientation_changed", self, "_on_orientation_changed")
+			var _res : int = _hex_grid.connect("orientation_changed", self, "_on_orientation_changed")
 		if not _hex_grid.is_connected("bounds_updated", self, "_on_bounds_updated"):
-			_hex_grid.connect("bounds_updated", self, "_on_bounds_updated")
+			var _res : int = _hex_grid.connect("bounds_updated", self, "_on_bounds_updated")
 		if not _hex_grid.is_connected("region_added", self, "_on_region_added"):
-			_hex_grid.connect("region_added", self, "_on_region_added")
+			var _res : int = _hex_grid.connect("region_added", self, "_on_region_added")
 		if not _hex_grid.is_connected("region_removed", self, "_on_region_removed"):
-			_hex_grid.connect("region_removed", self, "_on_region_removed")
+			var _res : int = _hex_grid.connect("region_removed", self, "_on_region_removed")
 		if not _hex_grid.is_connected("region_changed", self, "_on_region_changed"):
-			_hex_grid.connect("region_changed", self, "_on_region_changed")
+			var _res : int = _hex_grid.connect("region_changed", self, "_on_region_changed")
 		
 		_UpdateCellOrientation()
 		if _enable_cursor:
@@ -153,20 +145,10 @@ func set_cursor_region_priority(p : int) -> void:
 	if _hex_grid != null:
 		_hex_grid.change_region_priority("cursor", _cursor_region_priority)
 
-func set_enable_focus_dot(enable : bool) -> void:
-	if _enable_focus_dot != enable:
-		_enable_focus_dot = enable
-		_QueueRedraw()
-
-func set_focus_dot_color(c : Color) -> void:
-	_focus_dot_color = c
-	_QueueRedraw()
-
 # ------------------------------------------------------------------------------
 # Override Methods
 # ------------------------------------------------------------------------------
 func _ready() -> void:
-	_CheckTargetCamera()
 	if _enable_cursor:
 		_AddCursorHighlightRegion()
 	_UpdateCellOrientation()
@@ -195,12 +177,6 @@ func _get(property : String):
 			return _cursor_color
 		"cursor_region_priority":
 			return _cursor_region_priority
-		"enable_focus_dot":
-			return _enable_focus_dot
-		"focus_dot_color":
-			return _focus_dot_color
-		"target_camera_path":
-			return _target_camera_path
 	return null
 
 func _set(property : String, value) -> bool:
@@ -241,18 +217,6 @@ func _set(property : String, value) -> bool:
 		"cursor_region_priority":
 			if typeof(value) == TYPE_INT:
 				set_cursor_region_priority(value)
-			else : success = false
-		"enable_focus_dot":
-			if typeof(value) == TYPE_BOOL:
-				set_enable_focus_dot(value)
-			else : success = false
-		"focus_dot_color":
-			if typeof(value) == TYPE_COLOR:
-				set_focus_dot_color(value)
-			else : success = false
-		"target_camera_path":
-			if typeof(value) == TYPE_NODE_PATH:
-				_target_camera_path = value
 			else : success = false
 		_:
 			success = false
@@ -327,29 +291,6 @@ func _get_property_list() -> Array:
 				usage = PROPERTY_USAGE_DEFAULT
 			}
 		])
-	
-	arr.append({
-		name = "enable_focus_dot",
-		type = TYPE_BOOL,
-		usage = PROPERTY_USAGE_DEFAULT
-	})
-	
-	if _enable_focus_dot:
-		arr.append_array([
-			{
-				name = "focus_dot_color",
-				type = TYPE_COLOR,
-				usage = PROPERTY_USAGE_DEFAULT
-			},
-		])
-	
-	arr.append_array([
-		{
-			name = "target_camera_path",
-			type = TYPE_NODE_PATH,
-			usage = PROPERTY_USAGE_DEFAULT
-		},
-	])
 	return arr
 
 
@@ -375,16 +316,6 @@ func _draw() -> void:
 			if process:
 				color.a = alpha
 				e.draw(self, offset, color)
-	
-	if _enable_focus_dot:
-		var target = _target_camera.get_ref()
-		if target:
-			draw_circle(target.global_position, 2.0, _focus_dot_color)
-
-func _physics_process(_delta : float) -> void:
-	var target = _target_camera.get_ref()
-	if target:
-		_SetOriginFromPoint(target.global_position, true)
 
 func _process(_delta : float) -> void:
 	if _viz_dirty:
@@ -400,23 +331,9 @@ func _QueueRedraw() -> void:
 	else:
 		_viz_dirty = true
 
-func _CheckTargetCamera() -> void:
-	if _target_camera_path == NodePath(""):
-		if _target_camera.get_ref() != null:
-			_target_camera = weakref(null)
-	else:
-		var target = get_node_or_null(_target_camera_path)
-		if target != _target_camera.get_ref():
-			_target_camera = weakref(target)
-
 func _AddCursorHighlightRegion() -> void:
-	if _hex_grid == null:
-		return
-	
-	var origin : HexCell = HexCell.new(Vector3.ZERO, false, _hex_grid.orientation)
-	if _target_camera.get_ref() != null:
-		origin.from_point(_target_camera.get_ref().global_position)
-	_hex_grid.add_region("cursor", [origin], _cursor_color, _cursor_region_priority)
+	if _hex_grid != null:
+		var _res : int = _hex_grid.add_region("cursor", [_grid_origin.clone()], _cursor_color, _cursor_region_priority)
 
 func _UpdateCellOrientation() -> void:
 	if _hex_grid != null:
@@ -499,35 +416,18 @@ func _HexToGridData(cell : HexCell) -> void:
 		last_point = npoint
 	_StoreEdge(cell, eid, last_point, point + offset)
 
-
-func _SetOriginFromPoint(p : Vector2, set_as_cursor : bool = false) -> void:
-	if _hex_grid == null:
-		return
-	
-	#var new_origin : HexCell = HexCell.new(p / _cell_size, true, _cell_orientation)
-	_scratch_cell.from_point(p / _cell_size)
-	if not _scratch_cell.eq(_grid_origin):
-		_grid_origin.qrs = _scratch_cell.qrs
-		if set_as_cursor:
-			_hex_grid.change_region_cells("cursor", [_grid_origin.clone()])
-		emit_signal("origin_changed", _grid_origin.clone())
-	_QueueRedraw()
-
 # ------------------------------------------------------------------------------
 # Public Methods
 # ------------------------------------------------------------------------------
 func set_origin_cell(origin : HexCell) -> void:
-	if _target_camera.get_ref() != null:
-		return # Only update origin this way if we have no target camera.
-	
 	if origin.is_valid() and not origin.eq(_grid_origin):
 		_grid_origin.qrs = origin.qrs
+		if _enable_cursor and _hex_grid != null:
+			_hex_grid.change_region_cells("cursor", [_grid_origin.clone()])
 		_QueueRedraw()
 		emit_signal("origin_changed", _grid_origin.clone())
 
 func set_origin_from_point(p : Vector2) -> void:
-	if _target_camera.get_ref() != null:
-		return # Only update origin this way if we have no target camera.
 	_scratch_cell.from_point(p / _cell_size)
 	set_origin_cell(_scratch_cell)
 
@@ -540,17 +440,17 @@ func get_origin() -> HexCell:
 # ------------------------------------------------------------------------------
 # Yes... I realize how repeatative these handlers are. This was whipped quick. May go back and
 # optimize all of this later!
-func _on_orientation_changed(new_orientation : int) -> void:
+func _on_orientation_changed(_new_orientation : int) -> void:
 	_UpdateCellOrientation()
 	_QueueRedraw()
 
-func _on_region_added(region_name : String) -> void:
+func _on_region_added(_region_name : String) -> void:
 	_QueueRedraw()
 
-func _on_region_removed(region_name : String) -> void:
+func _on_region_removed(_region_name : String) -> void:
 	_QueueRedraw()
 
-func _on_region_changed(region_name : String) -> void:
+func _on_region_changed(_region_name : String) -> void:
 	_QueueRedraw()
 
 func _on_bounds_updated() -> void:

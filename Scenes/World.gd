@@ -133,15 +133,19 @@ func _unhandled_input(event : InputEvent) -> void:
 func _draw():
 	draw_line(Vector2(-10, 0), Vector2(10, 0), Color.azure)
 	draw_line(Vector2(0, -10), Vector2(0, 10), Color.azure)
+	
+	if camera_node:
+		draw_circle(camera_node.global_position, 2.0, Color.red)
 
 func _physics_process(delta : float) -> void:
 	var dir : Vector2 = _dir_br - _dir_tl
 	if dir.length_squared() > 0.1:
 		camera_node.global_position += dir * CAMERA_SPEED * delta
+		hexgridview.set_origin_from_point(camera_node.global_position)
 		if _operation_mode == "Line" and _line_started and _hex_grid != null:
 			var cell : HexCell = hexgridview.get_origin()
-			cell.from_point(camera_node.global_position / hexgridview.cell_size)
 			_hex_grid.replace_region("Line", _line_pos.get_line_to_cell(cell), Color.lightsteelblue, 1)
+		update()
 
 # --------------------------------------------------------------------------------------------------
 # Private Methods

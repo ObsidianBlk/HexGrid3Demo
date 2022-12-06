@@ -28,9 +28,6 @@ base_grid_color = Color( 0.498039, 1, 0.831373, 1 )
 enable_cursor = true
 cursor_color = Color( 1, 1, 0, 1 )
 cursor_region_priority = 100
-enable_focus_dot = true
-focus_dot_color = Color( 1, 0, 0, 1 )
-target_camera_path = NodePath("../Camera2D")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 current = true
